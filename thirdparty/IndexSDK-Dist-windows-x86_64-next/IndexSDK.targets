@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(IndexSdkPreviousForceImportAfterCppTargets)" Condition="'$(IndexSdkPreviousForceImportAfterCppTargets)' != '' and '$(IndexSdkPreviousForceImportAfterCppTargets)' != '$(IndexSdkRoot)IndexSDK.targets' and Exists('$(IndexSdkPreviousForceImportAfterCppTargets)')" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>IDX_IMPORT_DLL;IDX_PLATFORM_WINDOWS;IDX_DIST;NDEBUG;GLFW_DLL;IDX_RHI_WEBGPU;WEBGPU_CPP_HAS_ENUM_CLASS_BITMASKS=1;IMGUI_IMPL_WEBGPU_BACKEND_DAWN;INDEX_WITH_RENDER=1;INDEX_WITH_AUDIO=1;INDEX_WITH_PHYSICS=1;INDEX_WITH_SCRIPTING=1;INDEX_WITH_APPLICATION=1;INDEX_WITH_EDITOR=0;INDEX_ENTITY_BITS=20;MAGIC_ENUM_RANGE_MIN=-1;MAGIC_ENUM_RANGE_MAX=32;INDEX_ALL_MODULES=1;INDEX_PROFILER_ENABLED;TRACY_ENABLE;TRACY_IMPORTS;TRACY_ON_DEMAND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <AdditionalOptions>/utf-8 /FS /Zc:preprocessor %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(IndexSdkRoot)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Index-Engine.lib;Tracy.lib;shell32.lib;gdi32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+  </ItemDefinitionGroup>
+  <Target Name="CopyIndexSdkRuntime" AfterTargets="Build" Condition="'$(IndexSdkDeployRuntime)' != 'false'">
+    <ItemGroup>
+      <IndexSdkRuntimeDll Include="$(IndexSdkRoot)runtime\*.dll" />
+      <IndexSdkAsset Include="$(IndexSdkRoot)runtime\IndexAssets\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(IndexSdkRuntimeDll)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(IndexSdkAsset)" DestinationFiles="@(IndexSdkAsset-&gt;'$(OutDir)IndexAssets\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

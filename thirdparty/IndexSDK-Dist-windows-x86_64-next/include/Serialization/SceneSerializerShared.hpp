@@ -1,0 +1,256 @@
+#pragma once
+
+#include "Core/Export.hpp"
+#include "Assets/AssetRegistry.hpp"
+#include "Audio/AudioManager.hpp"
+#include "Core/Log.hpp"
+#include "Core/UUID.hpp"
+#include "Graphics/TextureManager.hpp"
+#include "Scene/EntityHandle.hpp"
+#include "Serialization/Json.hpp"
+
+#include <algorithm>
+#include <cctype>
+#include <cstddef>
+#include <cstdint>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace Index {
+	class Scene;
+	enum class SceneSerializationFormat : std::uint8_t;
+	struct ScriptComponent;
+}
+
+namespace Index::SceneSerializerInternal {
+	inline constexpr int k_SceneFormatVersion = 1;
+	inline constexpr float k_MinScaleAxis = 0.0001f;
+}
+
+namespace Index::SceneSerializerStorage {
+	INDEX_API bool ReadRootFromFile(const std::string& path, Json::Value& outRoot, std::string* outError = nullptr);
+	INDEX_API bool WriteRootToFile(const std::string& path, const Json::Value& root, SceneSerializationFormat format);
+	INDEX_API bool IsBinaryData(const std::vector<std::uint8_t>& bytes);
+
+	// Cursor into a binary scene's "entities" array. `bytes` must outlive the cursor.
+	struct BinarySceneEntityCursor {
+		const std::vector<std::uint8_t>* bytes = nullptr;
+		std::size_t offset = 0;        // byte offset of the next entity element
+		std::uint32_t remaining = 0;   // entities not yet streamed
+	};
+
+	// Decode a binary scene's header (root minus the "entities" array) into outHeader and
+	// position outCursor at the first entity. Pull entities with ReadNextBinaryEntity. This
+	// avoids materializing the whole-file DOM; binary scenes only. Returns false on error.
+	INDEX_API bool BeginBinaryScene(const std::vector<std::uint8_t>& bytes, Json::Value& outHeader,
+		BinarySceneEntityCursor& outCursor, std::string* outError = nullptr);
+
+	// Decode the next entity into outEntity, advancing the cursor. Returns false when the
+	// array is exhausted (outError stays empty) or on a decode error (outError is set).
+	INDEX_API bool ReadNextBinaryEntity(BinarySceneEntityCursor& cursor, Json::Value& outEntity,
+		std::string* outError = nullptr);
+}
+
+namespace Index::Detail {
+	Json::Value SerializeEntity(Scene& scene, EntityHandle entity);
+	Json::Value SerializeScriptFields(const ScriptComponent& scriptComponent);
+
+	bool JsonEquivalent(const Json::Value& a, const Json::Value& b);
+	void BuildOverridePatch(
+		const Json::Value& prefabValue,
+		const Json::Value& instanceValue,
+		const std::string& prefix,
+		Json::Value& overrides);
+
+	// Strip identity / origin / asset-GUID fields from a serialized entity. Used by
+	// SceneSerializer (clipboard/prefab save) and SceneSerializerDeserialize (prefab
+	// override diff) to compare structurally. Previously duplicated across both TUs.
+	void RemoveObjectMember(Json::Value& value, std::string_view key);
+	void RemoveEntityIdentityMembers(Json::Value& value);
+}
+
+namespace Index::SceneSerializerShared {
+	using Json::Value;
+
+	inline float GetFloatMember(const Value& object, std::string_view key, float fallback = 0.0f) {
+		const Value* value = object.FindMember(key);
+		return value ? static_cast<float>(value->AsDoubleOr(fallback)) : fallback;
+	}
+
+	inline int GetIntMember(const Value& object, std::string_view key, int fallback = 0) {
+		const Value* value = object.FindMember(key);
+		return value ? value->AsIntOr(fallback) : fallback;
+	}
+
+	inline uint64_t GetUInt64Member(const Value& object, std::string_view key, uint64_t fallback = 0) {
+		const Value* value = object.FindMember(key);
+		if (!value) {
+			return fallback;
+		}
+
+		if (value->IsString()) {
+			const std::string valueStr = value->AsStringOr();
+			std::size_t parseEnd = 0;
+			try {
+				const uint64_t parsed = static_cast<uint64_t>(std::stoull(valueStr, &parseEnd));
+				// Full-parse check: reject trailing garbage ("123abc" -> 123). A
+				// partially-parsed GUID/id is worse than the fallback because it
+				// silently resolves to the WRONG asset instead of warning.
+				if (parseEnd == valueStr.size()) {
+					return parsed;
+				}
+			}
+			catch (...) {
+				// non-numeric / overflow: handled by the shared warn+fallback below
+			}
+			const std::string memberName(key);
+			IDX_CORE_WARN_TAG(
+				"Serialization",
+				"Failed to parse uint64 member '{}' (value: '{}')",
+				memberName,
+				valueStr);
+			return fallback;
+		}
+
+		return value->AsUInt64Or(fallback);
+	}
+
+	inline bool GetBoolMember(const Value& object, std::string_view key, bool fallback = false) {
+		const Value* value = object.FindMember(key);
+		return value ? value->AsBoolOr(fallback) : fallback;
+	}
+
+	inline std::string GetStringMember(const Value& object, std::string_view key, const std::string& fallback = {}) {
+		const Value* value = object.FindMember(key);
+		return value ? value->AsStringOr(fallback) : fallback;
+	}
+
+	inline const Value* GetObjectMember(const Value& object, std::string_view key) {
+		const Value* value = object.FindMember(key);
+		return value && value->IsObject() ? value : nullptr;
+	}
+
+	inline const Value* GetArrayMember(const Value& object, std::string_view key) {
+		const Value* value = object.FindMember(key);
+		return value && value->IsArray() ? value : nullptr;
+	}
+
+	inline bool IsUnsignedIntegerString(const std::string& value) {
+		if (value.empty()) {
+			return false;
+		}
+
+		return std::all_of(value.begin(), value.end(), [](unsigned char ch) {
+			return std::isdigit(ch) != 0;
+		});
+	}
+
+	inline std::string NormalizeScriptAssetValue(std::string_view fieldType, const std::string& value) {
+		if ((fieldType != "texture" && fieldType != "audio") || value.empty() || IsUnsignedIntegerString(value)) {
+			return value;
+		}
+
+		const uint64_t assetId = AssetRegistry::GetOrCreateAssetUUID(value);
+		return assetId != 0 ? std::to_string(assetId) : value;
+	}
+
+	inline TextureHandle LoadTextureFromValue(
+		const Value& object,
+		std::string_view assetKey,
+		std::string_view pathKey,
+		Filter filter = Filter::Point,
+		Wrap u = Wrap::Clamp,
+		Wrap v = Wrap::Clamp,
+		UUID* outAssetId = nullptr) {
+		uint64_t assetId = GetUInt64Member(object, assetKey, 0);
+		if (assetId != 0) {
+			TextureHandle handle = TextureManager::LoadTextureByUUID(assetId, filter, u, v);
+			if (handle.IsValid()) {
+				if (outAssetId) {
+					*outAssetId = UUID(assetId);
+				}
+				return handle;
+			}
+
+			if (outAssetId) {
+				*outAssetId = UUID(assetId);
+			}
+		}
+
+		const std::string path = GetStringMember(object, pathKey);
+		if (path.empty()) {
+			if (outAssetId && assetId == 0) {
+				*outAssetId = UUID(0);
+			}
+			return TextureHandle::Invalid();
+		}
+
+		TextureHandle handle = TextureManager::LoadTexture(path, filter, u, v);
+		if (handle.IsValid()) {
+			assetId = TextureManager::GetTextureAssetUUID(handle);
+			if (outAssetId) {
+				*outAssetId = UUID(assetId);
+			}
+		}
+		else if (outAssetId) {
+			*outAssetId = UUID(0);
+		}
+
+		return handle;
+	}
+
+	inline AudioHandle LoadAudioFromValue(const Value& object, std::string_view assetKey, std::string_view pathKey, UUID* outAssetId = nullptr) {
+		uint64_t assetId = GetUInt64Member(object, assetKey, 0);
+		if (assetId != 0) {
+			if (outAssetId) {
+				*outAssetId = UUID(assetId);
+			}
+			AudioHandle handle = AudioManager::LoadAudioByUUID(assetId);
+			if (handle.IsValid()) {
+				return handle;
+			}
+		}
+
+		const std::string path = GetStringMember(object, pathKey);
+		if (path.empty()) {
+			if (outAssetId && assetId == 0) {
+				*outAssetId = UUID(0);
+			}
+			return AudioHandle();
+		}
+
+		AudioHandle handle = AudioManager::LoadAudio(path);
+		if (handle.IsValid()) {
+			assetId = AudioManager::GetAudioAssetUUID(handle);
+			if (outAssetId) {
+				*outAssetId = UUID(assetId);
+			}
+		}
+		else if (outAssetId && assetId == 0) {
+			*outAssetId = UUID(0);
+		}
+
+		return handle;
+	}
+
+	inline std::string ValueToFieldString(const Value& value) {
+		if (value.IsString()) {
+			return value.AsStringOr();
+		}
+		if (value.IsBool()) {
+			return value.AsBoolOr(false) ? "true" : "false";
+		}
+		if (value.IsNumber()) {
+			std::ostringstream stream;
+			stream.precision(15);
+			stream << value.AsDoubleOr(0.0);
+			return stream.str();
+		}
+		if (value.IsNull()) {
+			return {};
+		}
+		return Json::Stringify(value, false);
+	}
+}

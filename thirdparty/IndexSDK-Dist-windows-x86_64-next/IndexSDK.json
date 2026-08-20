@@ -1,0 +1,10 @@
+{
+    "configuration":  "Dist",
+    "platform":  "windows-x86_64",
+    "profiler":  true,
+    "entityBits":  20,
+    "engineSha256":  "8b43b67336282aaea3a06a591b472d120b8b67083bc2252c9d894135ab6f0894",
+    "nativePackageAbiSchema":  1,
+    "includeRootsRequiredByConsumer":  1,
+    "importLibrariesRequiredByConsumer":  2
+}
