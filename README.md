@@ -1,4 +1,4 @@
-# Ecs
+# Entity Component System
 A C++ Entity Component System
 
 ## Usage
