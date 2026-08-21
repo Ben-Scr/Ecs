@@ -4,8 +4,8 @@ A lightweight C++ 20 Header only Entity Component System
 ## Features
 
 * Create entities with multiple components at once
-* Multi-component operations
-* Fast, zero-copy component queries
+* Multi component operations
+* Fast, zero copy component queries
 * Query filtering with `With<T>()` and `Without<T>()`
 * Optional entity free query results with `WithoutEntity()`
 * Safe structural changes during iteration with `Stable()`
