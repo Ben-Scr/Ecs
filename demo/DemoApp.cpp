@@ -11,6 +11,7 @@ class DemoApp : public Index::Application {
 public:
 	Index::ApplicationConfig GetConfiguration() const override {
 		auto config = ApplicationConfig::Game();
+		config.WindowSpecification.Title = "ECS Demo";
 		return config;
 	}
 
