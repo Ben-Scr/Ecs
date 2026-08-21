@@ -1,7 +1,5 @@
 #include "../src/Ecs.hpp"
 #include <Index.hpp>
-#include <Project/IndexProject.hpp>
-#include <Project/ProjectManager.hpp>
 #include "MovingBallsSystem.hpp"
 
 using namespace Index;
@@ -23,12 +21,6 @@ public:
 };
 
 Index::Application* Index::CreateApplication() {
-	auto project = std::make_unique<Index::IndexProject>();
-	project->ActiveRenderBackend =
-		Index::IndexProject::RenderBackend::Direct3D12;
-
-	Index::ProjectManager::SetCurrentProject(std::move(project));
-
 	return new DemoApp();
 }
 

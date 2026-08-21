@@ -277,6 +277,33 @@ namespace Ecs {
 			return pool->Get(ent);
 		}
 
+
+		template<typename T>
+		T* TryGet(Entity ent) {
+			if (!IsValid(ent))
+				return nullptr;
+
+			const auto* pool = TryGetPool<T>();
+
+			if (!pool)
+				return nullptr;
+
+			return &pool->Get(ent);
+		}
+
+		template<typename T>
+		const T* TryGet(Entity ent) const {
+			if (!IsValid(ent))
+				return nullptr;
+
+			const auto* pool = TryGetPool<T>();
+
+			if (!pool)
+				return nullptr;
+
+			return &pool->Get(ent);
+		}
+
 		// Returns whether the passed entity has the component
 		template<typename T>
 		bool Has(Entity ent) const {

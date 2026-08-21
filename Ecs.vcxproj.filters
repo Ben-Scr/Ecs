@@ -42,19 +42,16 @@
     <ClInclude Include="src\Ecs.hpp">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="src\MovingBallsSystem.hpp">
+    <ClInclude Include="demo\MovingBallsSystem.hpp">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="demo\DemoApp.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="src\MovingBallsSystem.cpp">
+    <ClCompile Include="demo\MovingBallsSystem.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
 </Project>

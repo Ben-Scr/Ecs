@@ -17,4 +17,9 @@ private:
 	const bool m_UseEnTT;
 	Ecs::Registry m_Registry;
 	entt::registry m_EnTTRegistry;
+	Index::ParticleSystem2DComponent* m_EffectPts;
+	Index::ParticleSystem2DComponent* m_ExplosionPts;
+
+	Index::Transform2DComponent* m_EffectTr;
+	Index::Transform2DComponent* m_ExplosionTr;
 };

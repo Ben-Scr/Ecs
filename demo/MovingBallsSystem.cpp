@@ -8,9 +8,7 @@ using namespace Index;
 namespace {
 	constexpr std::size_t BallCapacity = 100000;
 
-	void InitializeBallTransform(
-		Transform2DComponent& transform,
-		const Vec2& position)
+	void InitializeBallTransform(Transform2DComponent& transform, const Vec2& position)
 	{
 		transform.Position = position;
 		transform.LocalPosition = position;
@@ -29,8 +27,7 @@ void MovingBallsSystem::CreateBall(const Vec2& position) {
 
 		try {
 			m_EnTTRegistry.emplace<MovingBall>(entity);
-			auto& transform =
-				m_EnTTRegistry.emplace<Transform2DComponent>(entity);
+			auto& transform = m_EnTTRegistry.emplace<Transform2DComponent>(entity); 
 			InitializeBallTransform(transform, position);
 		}
 		catch (...) {
@@ -41,10 +38,7 @@ void MovingBallsSystem::CreateBall(const Vec2& position) {
 		return;
 	}
 
-	const Ecs::Entity entity = m_Registry.Create<
-		Transform2DComponent,
-		MovingBall
-	>();
+	const Ecs::Entity entity = m_Registry.Create<Transform2DComponent,MovingBall>();
 	InitializeBallTransform(
 		m_Registry.Get<Transform2DComponent>(entity),
 		position
@@ -52,7 +46,15 @@ void MovingBallsSystem::CreateBall(const Vec2& position) {
 }
 
 void MovingBallsSystem::Start(Scene& scene) {
-	Gizmo::SetMaxVertices(10000000);
+	Gizmo::SetMaxVertices(BallCapacity * 16);
+
+	auto effectEnt = Entity::CreateWith<Transform2DComponent, ParticleSystem2DComponent>();
+	auto explosionEnt = Entity::CreateWith<Transform2DComponent, ParticleSystem2DComponent>();
+
+	m_EffectPts = &effectEnt.GetComponent<ParticleSystem2DComponent>();
+	m_EffectTr = &effectEnt.GetComponent<Transform2DComponent>();
+
+	m_EffectPts->ParticleSettings.Scale = Vec2(0.1f, 0.1f);
 
 	CreateBall(Vector::Zero());
 
@@ -94,14 +96,65 @@ void MovingBallsSystem::Update(Scene& scene) {
 	const AABB cameraViewport = camera->GetViewportAABB();
 	camera->AddOrthographicSize(-Input::ScrollValue());
 
-	const bool magnet = Input::GetMouse(MouseButton::Middle);
+	static float sizeMult = 1.0f;
+	float cameraSize = camera->GetOrthographicSize();
+	float orthoSize = 2.0f * sizeMult;
+
+	if (Input::GetKey(KeyCode::LeftControl))
+		sizeMult += Time::GetDeltaTime();
+	else if (Input::GetKey(KeyCode::LeftShift))
+		sizeMult -= Time::GetDeltaTime();
+
+	const bool magnet = Input::GetMouse(MouseButton::Left);
+	const bool push = Input::GetMouse(MouseButton::Right);
+
+	m_EffectPts->Shape = ParticleSystem2DComponent::CircleParams(orthoSize * 1, true);
+	m_EffectPts->EmissionSettings.EmitOverTime = orthoSize * 25.0f;
+	m_EffectTr->Position = mousePosition;
+
+	m_EffectPts->Stop();
+
+	if (magnet) {
+		m_EffectPts->Play();
+		Gizmo::SetColor(Color::Black());
+		Gizmo::DrawCircle(mousePosition, orthoSize);
+		Gizmo::SetColor(Color::Black());
+		Gizmo::DrawWireCircle(mousePosition, orthoSize * 1.25f);
+		Gizmo::SetColor(Color::White());
+	}
+	else if (push) {
+		m_EffectPts->Play();
+		Gizmo::SetColor(Color::Red().WithAlpha(0.5f));
+		Gizmo::DrawCircle(mousePosition, orthoSize);
+		Gizmo::SetColor(Color::LightRed());
+		Gizmo::DrawWireCircle(mousePosition, orthoSize * 1.25f);
+		Gizmo::SetColor(Color::White());
+	}
+
+	orthoSize *= 1.25f;
 
 	auto updateAndDraw = [&](Transform2DComponent& transform) {
-		if (magnet) {
-			const Vec2 direction = mousePosition - transform.Position;
-			transform.Rotation =
-				std::atan2(direction.y, direction.x) - HalfPi<float>();
-			transform.Position += direction * dt;
+		if (magnet && Vector::Distance(transform.Position, mousePosition) < orthoSize) {
+			const Vec2 direction = Vector::Normalized(mousePosition - transform.Position);
+			Gizmo::SetColor(Random::NextColor());
+			Gizmo::DrawLine(mousePosition, transform.Position);
+			Gizmo::SetColor(Color::White());
+			transform.Rotation = std::atan2(direction.y, direction.x) - HalfPi<float>();
+			transform.Position += direction * dt * cameraSize * 4.0f;
+		}
+		else if (push && Vector::Distance(transform.Position, mousePosition) < orthoSize) {
+			const Vec2 direction = Vector::Normalized(transform.Position - mousePosition);
+			Gizmo::SetColor(Random::NextColor());
+			Gizmo::DrawLine(mousePosition, transform.Position);
+			Gizmo::SetColor(Color::White());
+			transform.Rotation = std::atan2(direction.y, direction.x) - HalfPi<float>();
+			
+			const Vec2 up{
+				-std::sin(transform.Rotation),
+				 std::cos(transform.Rotation)
+			};
+
+			transform.Position += up * dt * 5.0f;
 		}
 		else {
 			const Vec2 up{
@@ -141,24 +194,18 @@ void MovingBallsSystem::Update(Scene& scene) {
 	std::size_t ballCount = 0;
 
 	if (m_UseEnTT) {
-		auto view = m_EnTTRegistry.view<
-			Transform2DComponent,
-			MovingBall
-		>();
+		auto view = m_EnTTRegistry.view<Transform2DComponent, MovingBall>();
 		ballCount = static_cast<std::size_t>(view.size_hint());
 
 		for (auto&& [entity, transform] : view.each()) {
-			(void)entity;
 			updateAndDraw(transform);
 		}
 	}
 	else {
 		ballCount = m_Registry.GetEntityCount();
 
-		for (auto&& [entity, transform] :
-			m_Registry.Query<Transform2DComponent>().With<MovingBall>())
+		for (auto&& [entity, transform] : m_Registry.Query<Transform2DComponent>().With<MovingBall>())
 		{
-			(void)entity;
 			updateAndDraw(transform);
 		}
 	}
@@ -169,23 +216,23 @@ void MovingBallsSystem::Update(Scene& scene) {
 		).count();
 
 	Gizmo::SetColor(Color::Red());
-	Gizmo::DrawTextW(
+	Gizmo::DrawText(
 		StringHelper::ToString("FPS: ", 1.0f / Time::GetDeltaTimeUnscaled()),
 		Vec2(0.0f, 6.0f)
 	);
-	Gizmo::DrawTextW(
+	Gizmo::DrawText(
 		StringHelper::ToString("Graphics: ", Engine::GetGraphicsApiName()),
 		Vec2(0.0f, 5.0f)
 	);
-	Gizmo::DrawTextW(
+	Gizmo::DrawText(
 		StringHelper::ToString("Backend: ", m_UseEnTT ? "EnTT" : "Ecs"),
 		Vec2(0.0f, 4.0f)
 	);
-	Gizmo::DrawTextW(
+	Gizmo::DrawText(
 		StringHelper::ToString("Balls: ", ballCount),
 		Vec2(0.0f, 3.0f)
 	);
-	Gizmo::DrawTextW(
+	Gizmo::DrawText(
 		StringHelper::ToString("Ball loop: ", loopMilliseconds, " ms"),
 		Vec2(0.0f, 2.0f)
 	);
