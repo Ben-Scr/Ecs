@@ -1,6 +1,7 @@
 #include "../src/Ecs.hpp"
 #include <Index.hpp>
 #include "MovingBallsSystem.hpp"
+#include "DemoSystem.hpp"
 
 using namespace Index;
 
@@ -15,7 +16,7 @@ public:
 
 	void ConfigureScenes() override {
 		auto& scene = GetSceneManager()->RegisterScene("DemoScene");
-		scene.AddSystem<MovingBallsSystem>(UseEnTTForMovingBalls);
+		scene.AddSystem<DemoSystem>();
 		scene.SetAsStartupScene();
 	}
 };

@@ -27,22 +27,21 @@ void MovingBallsSystem::CreateBall(const Vec2& position) {
 
 		try {
 			m_EnTTRegistry.emplace<MovingBall>(entity);
-			auto& transform = m_EnTTRegistry.emplace<Transform2DComponent>(entity); 
+			auto& transform = m_EnTTRegistry.emplace<Transform2DComponent>(entity);
 			InitializeBallTransform(transform, position);
 		}
 		catch (...) {
 			m_EnTTRegistry.destroy(entity);
 			throw;
 		}
-
-		return;
 	}
-
-	const Ecs::Entity entity = m_Registry.Create<Transform2DComponent,MovingBall>();
-	InitializeBallTransform(
-		m_Registry.Get<Transform2DComponent>(entity),
-		position
-	);
+	else {
+		const Ecs::Entity entity = m_Registry.Create<Transform2DComponent, MovingBall>();
+		InitializeBallTransform(
+			m_Registry.Get<Transform2DComponent>(entity),
+			position
+		);
+	}
 }
 
 void MovingBallsSystem::Start(Scene& scene) {
@@ -64,12 +63,10 @@ void MovingBallsSystem::Update(Scene& scene) {
 	if (!camera)
 		return;
 
-	const Vec2 mousePosition =
-		camera->ScreenToWorld(Input::GetMousePosition());
+	const Vec2 mousePosition = camera->ScreenToWorld(Input::GetMousePosition());
 
-	if (Input::GetKey(KeyCode::E)) {
+	if (Input::GetKey(KeyCode::E))
 		CreateBall(mousePosition);
-	}
 
 	if (Input::GetKeyDown(KeyCode::B)) {
 		for (int i = 0; i < 1000; ++i)
@@ -99,10 +96,7 @@ void MovingBallsSystem::Update(Scene& scene) {
 	const bool magnet = Input::GetMouse(MouseButton::Left);
 	const bool push = Input::GetMouse(MouseButton::Right);
 
-	m_EffectPts->Stop();
-
 	if (magnet) {
-		m_EffectPts->Play();
 		Gizmo::SetColor(Color::Black());
 		Gizmo::DrawCircle(mousePosition, orthoSize);
 		Gizmo::SetColor(Color::Black());
@@ -110,7 +104,6 @@ void MovingBallsSystem::Update(Scene& scene) {
 		Gizmo::SetColor(Color::White());
 	}
 	else if (push) {
-		m_EffectPts->Play();
 		Gizmo::SetColor(Color::Red().WithAlpha(0.5f));
 		Gizmo::DrawCircle(mousePosition, orthoSize);
 		Gizmo::SetColor(Color::LightRed());
@@ -135,7 +128,7 @@ void MovingBallsSystem::Update(Scene& scene) {
 			Gizmo::DrawLine(mousePosition, transform.Position);
 			Gizmo::SetColor(Color::White());
 			transform.Rotation = std::atan2(direction.y, direction.x) - HalfPi<float>();
-			
+
 			const Vec2 up{
 				-std::sin(transform.Rotation),
 				 std::cos(transform.Rotation)
@@ -175,7 +168,7 @@ void MovingBallsSystem::Update(Scene& scene) {
 		transform.LocalPosition = transform.Position;
 		transform.LocalRotation = transform.Rotation;
 		Gizmo::DrawCircle(transform.Position, 0.5f, 16);
-	};
+		};
 
 	const auto loopStart = std::chrono::steady_clock::now();
 	std::size_t ballCount = 0;

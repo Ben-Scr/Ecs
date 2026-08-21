@@ -45,12 +45,18 @@
     <ClInclude Include="demo\MovingBallsSystem.hpp">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="demo\DemoSystem.hpp">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="demo\DemoApp.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="demo\MovingBallsSystem.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="demo\DemoSystem.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

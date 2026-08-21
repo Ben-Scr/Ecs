@@ -366,6 +366,35 @@ namespace Ecs {
 				);
 		}
 
+		void Clear() {
+			m_FreeIndices.clear();
+
+			for (std::uint32_t i = 0; i < m_Generations.size(); ++i)
+			{
+				m_Alive[i] = false;
+
+				if (m_Generations[i] != std::numeric_limits<std::uint32_t>::max())
+				{
+					++m_Generations[i];
+					m_FreeIndices.push_back(i);
+				}
+			}
+
+			m_ComponentPools.clear();
+			m_EntityCount = 0;
+		}
+
+		void Reset()
+		{
+			m_FreeIndices.clear();
+			m_Generations.clear();
+			m_Alive.clear();
+			m_ComponentPools.clear();
+
+			m_ReservedCapacity = 0;
+			m_EntityCount = 0;
+		}
+
 
 		// Creates a zero-copy view. Do not structurally modify its component
 		// pools while iterating; call .Stable() on the view when mutation is needed.

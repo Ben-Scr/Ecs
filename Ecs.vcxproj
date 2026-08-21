@@ -211,6 +211,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="demo\DemoSystem.hpp" />
     <ClInclude Include="src\ComponentPool.hpp" />
     <ClInclude Include="src\Components.hpp" />
     <ClInclude Include="src\Ecs.hpp" />
@@ -224,6 +225,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="demo\DemoApp.cpp" />
+    <ClCompile Include="demo\DemoSystem.cpp" />
     <ClCompile Include="demo\MovingBallsSystem.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
