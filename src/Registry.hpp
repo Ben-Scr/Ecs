@@ -304,6 +304,22 @@ namespace Ecs {
 			return &pool->Get(ent);
 		}
 
+		template<typename T>
+		const T& GetOrAdd() const {
+			if (auto* tr = TryGet<T>(entity))
+				return *tr;
+
+			return Add<T>(entity);
+		}
+
+		template<typename T>
+		T& GetOrAdd() {
+			if (auto* tr = TryGet<T>(entity))
+				return *tr;
+
+			return Add<T>(entity);
+		}
+
 		// Returns whether the passed entity has the component
 		template<typename T>
 		bool Has(Entity ent) const {
