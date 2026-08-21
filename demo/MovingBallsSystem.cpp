@@ -46,16 +46,7 @@ void MovingBallsSystem::CreateBall(const Vec2& position) {
 }
 
 void MovingBallsSystem::Start(Scene& scene) {
-	Gizmo::SetMaxVertices(BallCapacity * 16);
-
-	auto effectEnt = Entity::CreateWith<Transform2DComponent, ParticleSystem2DComponent>();
-	auto explosionEnt = Entity::CreateWith<Transform2DComponent, ParticleSystem2DComponent>();
-
-	m_EffectPts = &effectEnt.GetComponent<ParticleSystem2DComponent>();
-	m_EffectTr = &effectEnt.GetComponent<Transform2DComponent>();
-
-	m_EffectPts->ParticleSettings.Scale = Vec2(0.1f, 0.1f);
-
+	Gizmo::SetMaxVertices(BallCapacity * 32);
 	CreateBall(Vector::Zero());
 
 	if (m_UseEnTT) {
@@ -107,10 +98,6 @@ void MovingBallsSystem::Update(Scene& scene) {
 
 	const bool magnet = Input::GetMouse(MouseButton::Left);
 	const bool push = Input::GetMouse(MouseButton::Right);
-
-	m_EffectPts->Shape = ParticleSystem2DComponent::CircleParams(orthoSize * 1, true);
-	m_EffectPts->EmissionSettings.EmitOverTime = orthoSize * 25.0f;
-	m_EffectTr->Position = mousePosition;
 
 	m_EffectPts->Stop();
 
@@ -216,6 +203,7 @@ void MovingBallsSystem::Update(Scene& scene) {
 		).count();
 
 	Gizmo::SetColor(Color::Red());
+
 	Gizmo::DrawText(
 		StringHelper::ToString("FPS: ", 1.0f / Time::GetDeltaTimeUnscaled()),
 		Vec2(0.0f, 6.0f)
