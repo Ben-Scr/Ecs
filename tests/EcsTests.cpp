@@ -10,6 +10,7 @@
 #include "Registry.hpp"
 
 namespace {
+
 	struct Position {
 		int Value = 0;
 	};
