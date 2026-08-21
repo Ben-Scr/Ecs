@@ -44,8 +44,7 @@ Color OppositeColor(const Color& col)
 
 void DemoSystem::Update(Scene& scene) {
 	auto* camera = scene.GetMainCamera();
-	if (!camera)
-		return;
+	if (!camera) return;
 
 	const Vec2 mousePosition = camera->ScreenToWorld(Input::GetMousePosition());
 

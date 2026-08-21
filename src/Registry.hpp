@@ -305,19 +305,19 @@ namespace Ecs {
 		}
 
 		template<typename T>
-		const T& GetOrAdd() const {
-			if (auto* tr = TryGet<T>(entity))
+		const T& GetOrAdd(Entity ent) const {
+			if (auto* tr = TryGet<T>(ent))
 				return *tr;
 
-			return Add<T>(entity);
+			return Add<T>(ent);
 		}
 
 		template<typename T>
-		T& GetOrAdd() {
-			if (auto* tr = TryGet<T>(entity))
+		T& GetOrAdd(Entity ent) {
+			if (auto* tr = TryGet<T>(ent))
 				return *tr;
 
-			return Add<T>(entity);
+			return Add<T>(ent);
 		}
 
 		// Returns whether the passed entity has the component

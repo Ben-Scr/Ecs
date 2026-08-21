@@ -12,7 +12,7 @@ public:
 	Ecs::Entity CreateEntity();
 	void CreateEntityAt(const Vec2& pos);
 	void DestroyEntity(Ecs::Entity ent);
+
 private:
-	// Used for creating entities
 	Ecs::Registry m_Registry;
 };
