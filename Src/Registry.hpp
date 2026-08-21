@@ -102,7 +102,7 @@ namespace Ecs {
 			static_assert(
 				Detail::AreUnique<FirstComponent, OtherComponents...>::value,
 				"Create component types must be unique"
-			);
+				);
 
 			const Entity ent = Create();
 
@@ -142,7 +142,7 @@ namespace Ecs {
 		std::size_t GetEntityCount() const noexcept {
 			return m_EntityCount;
 		}
-		
+
 		// Validates whether an entity is valid
 		bool IsValid(Entity entity) const {
 			return entity.Index < m_Generations.size()
@@ -177,12 +177,12 @@ namespace Ecs {
 		> Add(Entity ent) {
 			static_assert(
 				Detail::AreUnique<
-					FirstComponent,
-					SecondComponent,
-					OtherComponents...
+				FirstComponent,
+				SecondComponent,
+				OtherComponents...
 				>::value,
 				"Add component types must be unique"
-			);
+				);
 
 			if (!IsValid(ent))
 				throw std::runtime_error("Invalid entity");
@@ -230,12 +230,12 @@ namespace Ecs {
 		void Remove(Entity ent) {
 			static_assert(
 				Detail::AreUnique<
-					FirstComponent,
-					SecondComponent,
-					OtherComponents...
+				FirstComponent,
+				SecondComponent,
+				OtherComponents...
 				>::value,
 				"Remove component types must be unique"
-			);
+				);
 
 			if (!IsValid(ent))
 				return;
@@ -277,13 +277,13 @@ namespace Ecs {
 			return pool->Get(ent);
 		}
 
-
+		// Returns the requested component of the entity
 		template<typename T>
 		T* TryGet(Entity ent) {
 			if (!IsValid(ent))
 				return nullptr;
 
-			const auto* pool = TryGetPool<T>();
+			auto* pool = TryGetPool<T>();
 
 			if (!pool)
 				return nullptr;
@@ -291,6 +291,7 @@ namespace Ecs {
 			return &pool->Get(ent);
 		}
 
+		// Returns the requested component of the entity
 		template<typename T>
 		const T* TryGet(Entity ent) const {
 			if (!IsValid(ent))
@@ -338,12 +339,12 @@ namespace Ecs {
 		bool Has(Entity ent) const {
 			static_assert(
 				Detail::AreUnique<
-					FirstComponent,
-					SecondComponent,
-					OtherComponents...
+				FirstComponent,
+				SecondComponent,
+				OtherComponents...
 				>::value,
 				"Has component types must be unique"
-			);
+				);
 
 			if (!IsValid(ent))
 				return false;

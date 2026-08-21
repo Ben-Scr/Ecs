@@ -62,9 +62,9 @@ void DemoSystem::Update(Scene& scene) {
 	Gizmo::SetColor(Color::White());
 
 	if (m_Registry.IsValid(startEntity)) {
-		auto& tr2D = m_Registry.Get<Transform2DComponent>(startEntity);
-		tr2D.Position = mousePosition;
-		Gizmo::DrawSquare(tr2D.Position, tr2D.Scale, tr2D.Rotation);
+		auto* tr2D = m_Registry.TryGet<Transform2DComponent>(startEntity);
+		tr2D->Position = mousePosition;
+		Gizmo::DrawSquare(tr2D->Position, tr2D->Scale, tr2D->Rotation);
 	}
 
 	// Draws all entities who have a transform and a color component attached
