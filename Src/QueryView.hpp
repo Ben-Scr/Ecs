@@ -283,8 +283,8 @@ namespace Ecs {
 						[&](auto*... pools) {
 							return (
 								(pools &&
-									(m_CandidateIndexAligned &&
-										pools == m_CandidatePool ||
+									((m_CandidateIndexAligned &&
+										pools == m_CandidatePool) ||
 										pools->Contains(ent))) && ...
 							);
 						},
@@ -296,8 +296,8 @@ namespace Ecs {
 						[&](auto*... pools) {
 							return (
 								(pools &&
-									(m_CandidateIndexAligned &&
-										pools == m_CandidatePool ||
+									((m_CandidateIndexAligned &&
+										pools == m_CandidatePool) ||
 										pools->Contains(ent))) && ...
 							);
 						},

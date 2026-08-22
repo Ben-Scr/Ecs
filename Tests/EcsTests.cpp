@@ -18,6 +18,49 @@ namespace {
 	struct Velocity {};
 	struct Disabled {};
 
+	struct Configurable {
+		int Value = 0;
+	};
+
+	struct ComponentObserver {
+		int Calls = 0;
+		Ecs::Entity LastEntity;
+
+		void OnConfigurableAdded(
+			Ecs::Registry& registry,
+			Ecs::Entity entity,
+			Configurable& component)
+		{
+			if (!registry.IsValid(entity))
+				throw std::runtime_error("OnAdd received an invalid entity");
+
+			++Calls;
+			LastEntity = entity;
+			component.Value = 42;
+		}
+	};
+
+	struct ThrowingObserver {
+		void OnConfigurableAdded(
+			Ecs::Registry&,
+			Ecs::Entity,
+			Configurable&)
+		{
+			throw std::runtime_error("expected callback failure");
+		}
+	};
+
+	inline int FreeCallbackCalls = 0;
+
+	void OnConfigurableAddedFree(
+		Ecs::Registry&,
+		Ecs::Entity,
+		Configurable& component)
+	{
+		++FreeCallbackCalls;
+		component.Value += 1;
+	}
+
 	struct ThrowOnConstruction {
 		ThrowOnConstruction() {
 			throw std::runtime_error("expected construction failure");
@@ -341,6 +384,102 @@ namespace {
 		Check(iterator == end, "Iterator equality did not recognize the end");
 	}
 
+	void TestComponentAddSignals() {
+		Ecs::Registry registry;
+		ComponentObserver observer;
+
+		auto& signal = registry.OnAdd<Configurable>();
+		Check(
+			signal.Connect<&ComponentObserver::OnConfigurableAdded>(&observer),
+			"A new member callback connection was rejected"
+		);
+		Check(
+			!signal.Connect<&ComponentObserver::OnConfigurableAdded>(&observer),
+			"A duplicate member callback connection was accepted"
+		);
+		Check(signal.GetConnectionCount() == 1,
+			"Duplicate callback registration changed the connection count");
+
+		const Ecs::Entity first = registry.Create();
+		auto& firstComponent = registry.Add<Configurable>(first);
+		Check(observer.Calls == 1,
+			"OnAdd did not invoke the member callback");
+		Check(observer.LastEntity == first,
+			"OnAdd delivered the wrong entity");
+		Check(firstComponent.Value == 42,
+			"OnAdd could not configure the newly added component");
+
+		auto& existing = registry.GetOrAdd<Configurable>(first);
+		Check(&existing == &firstComponent,
+			"GetOrAdd did not return the existing component");
+		Check(observer.Calls == 1,
+			"GetOrAdd emitted OnAdd for an existing component");
+
+		const Ecs::Entity createdWithComponent = registry.Create<Configurable>();
+		Check(observer.Calls == 2,
+			"Create<T>() did not emit OnAdd");
+		Check(registry.Get<Configurable>(createdWithComponent).Value == 42,
+			"Create<T>() callback did not configure the component");
+
+		FreeCallbackCalls = 0;
+		Check(signal.Connect<&OnConfigurableAddedFree>(),
+			"A free callback connection was rejected");
+		const Ecs::Entity freeEntity = registry.Create<Configurable>();
+		Check(FreeCallbackCalls == 1,
+			"OnAdd did not invoke the free callback");
+		Check(registry.Get<Configurable>(freeEntity).Value == 43,
+			"OnAdd callbacks did not run in connection order");
+
+		Check(
+			signal.Disconnect<&ComponentObserver::OnConfigurableAdded>(&observer),
+			"Disconnect did not remove the member callback"
+		);
+		Check(!signal.Disconnect<&ComponentObserver::OnConfigurableAdded>(&observer),
+			"Disconnect reported a callback twice");
+
+		const int callsBeforeDisconnectAdd = observer.Calls;
+		registry.Create<Configurable>();
+		Check(observer.Calls == callsBeforeDisconnectAdd,
+			"A disconnected member callback was still invoked");
+
+		Check(
+			registry.OnAdd<Configurable>()
+				.Connect<&ComponentObserver::OnConfigurableAdded>(&observer),
+			"Reconnecting a member callback failed"
+		);
+		registry.Clear();
+		const Ecs::Entity afterClear = registry.Create<Configurable>();
+		Check(observer.LastEntity == afterClear,
+			"Clear discarded OnAdd subscriptions");
+		Check(registry.Get<Configurable>(afterClear).Value == 42,
+			"OnAdd subscriptions did not survive Clear");
+
+		registry.Reset();
+		const int callsBeforeResetAdd = observer.Calls;
+		FreeCallbackCalls = 0;
+		registry.Create<Configurable>();
+		Check(observer.Calls == callsBeforeResetAdd && FreeCallbackCalls == 0,
+			"Reset did not discard component subscriptions");
+
+		Ecs::Registry throwingRegistry;
+		ThrowingObserver throwingObserver;
+		throwingRegistry.OnAdd<Configurable>()
+			.Connect<&ThrowingObserver::OnConfigurableAdded>(&throwingObserver);
+
+		const Ecs::Entity throwingEntity = throwingRegistry.Create();
+		bool callbackFailed = false;
+		try {
+			throwingRegistry.Add<Configurable>(throwingEntity);
+		}
+		catch (const std::runtime_error&) {
+			callbackFailed = true;
+		}
+
+		Check(callbackFailed, "A throwing OnAdd callback did not propagate");
+		Check(!throwingRegistry.Has<Configurable>(throwingEntity),
+			"A throwing OnAdd callback left the component attached");
+	}
+
 	void TestStructuralMutationDuringQuery() {
 		Ecs::Registry registry;
 		for (int value = 0; value < 4; ++value) {
@@ -373,6 +512,7 @@ int main() {
 		TestSparseComponentLookup();
 		TestVariadicComponentOperations();
 		TestQueryFiltersAndConstIteration();
+		TestComponentAddSignals();
 		TestStructuralMutationDuringQuery();
 	}
 	catch (const std::exception& error) {

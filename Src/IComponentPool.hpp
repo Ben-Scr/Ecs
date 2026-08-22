@@ -9,6 +9,7 @@ namespace Ecs {
 	public:
 		virtual ~IComponentPool() = default;
 		virtual void Reserve(std::size_t capacity) = 0;
+		virtual void Clear() noexcept = 0;
 		virtual void Remove(Entity ent) noexcept = 0;
 		virtual bool Contains(Entity ent) const noexcept = 0;
 	};

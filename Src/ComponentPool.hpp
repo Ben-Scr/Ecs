@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "IComponentPool.hpp"
+#include "ComponentSignal.hpp"
 
 namespace Ecs {
 	template<typename T>
@@ -46,6 +47,12 @@ namespace Ecs {
 			m_Sparse.reserve(capacity);
 			m_Entities.reserve(capacity);
 			m_Components.reserve(capacity);
+		}
+
+		void Clear() noexcept override {
+			m_Sparse.clear();
+			m_Entities.clear();
+			m_Components.clear();
 		}
 
 		template<typename... Args>
@@ -133,6 +140,14 @@ namespace Ecs {
 			return m_Entities.size();
 		}
 
+		ComponentSignal<T>& OnAdd() noexcept {
+			return m_OnAdd;
+		}
+
+		const ComponentSignal<T>& OnAdd() const noexcept {
+			return m_OnAdd;
+		}
+
 	private:
 		static constexpr std::size_t InvalidIndex =
 			std::numeric_limits<std::size_t>::max();
@@ -158,5 +173,6 @@ namespace Ecs {
 		std::vector<Entity> m_Entities;
 		std::vector<StoredComponent> m_Components;
 		std::vector<std::size_t> m_Sparse;
+		ComponentSignal<T> m_OnAdd;
 	};
 }

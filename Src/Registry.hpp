@@ -123,9 +123,8 @@ namespace Ecs {
 			if (!IsValid(ent))
 				return;
 
-			for (auto& entry : m_ComponentPools) {
+			for (auto& entry : m_ComponentPools)
 				entry.second->Remove(ent);
-			}
 
 			m_Alive[ent.Index] = false;
 			--m_EntityCount;
@@ -150,18 +149,35 @@ namespace Ecs {
 				&& m_Generations[entity.Index] == entity.Generation;
 		}
 
-		// Adds a component to the passed entity
+		// Adds a component to the passed entity. OnAdd<T>() callbacks run after
+		// construction and may configure the new component before Add returns.
 		template<typename T, typename... Args>
 		T& Add(Entity ent, Args&&... args) {
 			if (!IsValid(ent))
 				throw std::runtime_error("Invalid entity");
 
 			auto& pool = GetOrCreatePool<T>();
-
-			return pool.Add(
+			T& component = pool.Add(
 				ent,
 				std::forward<Args>(args)...
 			);
+
+			try {
+				pool.OnAdd().Publish(*this, ent, component);
+			}
+			catch (...) {
+				pool.Remove(ent);
+				throw;
+			}
+
+			return component;
+		}
+
+		// Returns the signal emitted whenever T is newly added.
+		// Callback signature: void(Registry&, Entity, T&)
+		template<typename T>
+		ComponentSignal<T>& OnAdd() {
+			return GetOrCreatePool<T>().OnAdd();
 		}
 
 		// Default-constructs multiple components and returns references to them.
@@ -397,7 +413,9 @@ namespace Ecs {
 				}
 			}
 
-			m_ComponentPools.clear();
+			for (auto& entry : m_ComponentPools)
+				entry.second->Clear();
+
 			m_EntityCount = 0;
 		}
 
